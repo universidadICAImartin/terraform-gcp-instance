@@ -1,10 +1,14 @@
+resource "google_compute_address" "tf-vm-ip" {
+name = "ipv4-address-tf-vm"
+}
 resource "google_compute_instance" "tf-vm" {
   name         = "tf-vm"
   zone         = "us-central1-c"
   machine_type = "n1-standard-1"
+  allow_stopping_for_update = true
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      image = "debian-cloud/debian-12"
     }
   }
 
@@ -23,8 +27,22 @@ resource "google_compute_instance" "tf-vm" {
     network    = var.gcp-network
     subnetwork = var.gcp-network
 
-    access_config {}
+    access_config {nat_ip = google_compute_address.tf-vm-ip.address}
   }
+}
+output "tf-vm-ip" {
+value = google_compute_address.tf-vm-ip.address
+depends_on = [google_compute_instance.tf-vm]
+}
+
+resource "google_compute_disk" "tf-disk" { 
+  name = "tf-disk"
+  type = "pd-ssd"
+  size = 1 
+}
+resource "google_compute_attached_disk" "attached-tf-disk" {
+  disk = google_compute_disk.tf-disk.id 
+  instance = google_compute_instance.tf-vm.id 
 }
 
 output "tf-vm-internal-ip" {
